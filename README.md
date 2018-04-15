@@ -2,9 +2,11 @@
 
 __Strongly inspired__ by [cknadler/vim-anywhere](https://github.com/cknadler/vim-anywhere).
 
-*Note: Currently works only for macOS.*
+![demo](assets/demo.gif)
 
 Once [invoked](#keybinding), sublime-anywhere will create new temporary file with currently selected text. After close (and save) content of this file will be pasted into previously used application.
+
+*Note: Currently works only for macOS.*
 
 ## Installation
 
