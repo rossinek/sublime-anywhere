@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# sublime-anywhere - use Sublime whenever, wherever
+# Author: Artur Rosa
+# Homepage: https://www.github.com/rossinek/sublime-anywhere
+# Strongly inspired by cknadler/vim-anywhere
+#
+# Installs sublime-anywhere. Intended for use via curl:
+# $ curl -fsSL https://raw.github.com/rossinek/sublime-anywhere/master/install | bash
+
+set -e
+
+###
+# opts
+###
+LOCAL_PATH=""
+while getopts ":p:v" opt; do
+  case "$opt" in
+    v) set -x ;;
+    p) LOCAL_PATH="$OPTARG" ;;
+    \?) echo "Invalid option: -$OPTARG" >&2 ;;
+  esac
+done
+
+###
+# defs
+###
+
+err() { echo -e "$@" 1>&2; }
+
+check_installed() { hash $1 &> /dev/null; }
+
+require_installed() {
+  if ! check_installed $1; then
+    err "sublime-anywhere requires $1 to function"
+    if [[ "$2" != "" ]]; then echo $2; fi
+    exit 1
+  fi
+}
+
+SAH_PATH=$HOME/.sublime-anywhere
+SAH_URL='https://github.com/rossinek/sublime-anywhere'
+
+###
+# pre-installation checks
+###
+
+# Check if sublime-anywhere is already installed. If so, remove the previous
+# installation.
+if [ -a $SAH_PATH ]; then
+  echo "It seems that sublime-anywhere is already installed. Do you whish to update and reinstall it?"
+  select yn in "Yes" "No"; do
+    case $yn in
+      Yes )
+        echo 'Cleaning up previous installation...'
+        rm -rf $SAH_PATH
+        break
+        ;;
+      No )
+        echo 'Bye.'
+        exit
+        ;;
+      * )
+        echo 'Choose one of the available options.'
+        ;;
+    esac
+  done
+  rm -rf $SAH_PATH
+fi
+
+require_installed git
+
+# if we are in a git repo, unset env vars
+if git rev-parse --git-dir &> /dev/null; then
+  unset $(git rev-parse --local-env-vars) &> /dev/null
+fi
+
+# OSX specific checks
+if [[ $OSTYPE == "darwin"* ]]; then
+  require_installed subl
+
+# Unsupported OS
+else
+  echo "OS '$OSTYPE' is not supported!"
+  exit 1
+fi
+
+###
+# installation
+###
+
+echo "Installing sublime-anywhere..."
+
+if [[ $LOCAL_PATH ]]; then
+  cp -R $LOCAL_PATH $SAH_PATH
+else
+  git clone $SAH_URL $SAH_PATH
+fi
+
+# OSX install
+if [[ $OSTYPE == "darwin"* ]]; then
+  # store the absolute path to the sublime executable
+  which subl > $SAH_PATH/.path
+
+  # install the workflow as a service
+  mkdir -p $HOME/Library/Services
+  cp -R $SAH_PATH/SublimeAnywhere.workflow $HOME/Library/Services
+
+  # Set default keybindings
+  defaults write pbs NSServicesStatus '{
+    "(null) - SublimeAnywhere - runWorkflowAsService" = {
+      "key_equivalent" = "@^v";
+    };
+  }'
+
+  # Activating Finder causes the new keybindings to become active
+  osascript -e "activate application \"Finder\""
+fi
+
+echo "sublime-anywhere has been successfully installed!"
+echo 'Bye.'
